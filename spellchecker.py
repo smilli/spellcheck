@@ -15,7 +15,7 @@ class SpellChecker:
         Check spelling of all texts in dataset.
 
         Returns:
-            List of list of spelling corrections
+            List of lists of SpellingCorrection objects.
         """
         pass
 
@@ -26,10 +26,10 @@ class SpellingCorrection:
         Constructor for SpellingCorrection.
 
         Params:
-            index: [int] index of word in text
-            word: [string] misspelling
+            index: [int] index of word in text.
+            word: [string] misspelling.
             corrections: [list of strings] list of pos corrections sorted from
-                highest to lowest probability
+                highest to lowest probability.
         """
         self.index = index
         self.word = word

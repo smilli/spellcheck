@@ -31,18 +31,23 @@ class CorpusSpellChecker(SpellChecker):
         """Find all strings edit distance of 2 away from word."""
         return set(e2 for e1 in edit1_words(word) for e2 in edit1_words(e1))
 
-    def correct(self, word):
+    def correct(self, index, word):
         """Returns SpellingCorrection for word."""
         candidates = [w in self.edit1_words(word) if self.is_valid(w)]
         if not candidates:
             candidates = [w in self.edit2_words(word) if self.is_valid(w)]
         if not candidates:
-            return word
-        return max(candidates, key=self.corpus.get)
+            correction = word
+        else:
+            correction = max(candidates, key=self.corpus.get)
+        return SpellingCorrection(index, word, [correction])
 
     def spellcheck(self):
         corrections = []
         for text in self.dataset:
-            corrections.append([correct(word) for word in text if not
-                is_valid(word)]
+            corrections.append([correct(ind, word) for (ind, word) in
+                enumerate(text) if not is_valid(word)]
         return corrections
+
+    def __str__(self):
+        return '%s %s' % (self.__class__.__name__, self.corpus_name)
