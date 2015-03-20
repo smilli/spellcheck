@@ -1,0 +1,3 @@
+mercurial==3.0
+nltk==3.0.2
+prettytable==0.7.2

@@ -1,38 +1,68 @@
 from prettytable import PrettyTable
 
-def corrections_to_dict(corrections):
-    for essay_corrections in corrections:
-        for (i, correction) in essay_corrections:
-            correct_corrections[(c.word, i, c.index)] = c.corrections[0]
+from corpus_spellchecker import CorpusSpellChecker
+from digitization_parser import Parser
 
-def display_spellchecker_stats(spellcheckers, dataset_corrections):
+
+def compute_stats(dataset_corrections, spellchecker_corrections):
+    """
+    Calculate precision and recall.
+
+    Params:
+        dataset_corrections: [list of SpellingCorrection objects] The
+            SpellCheckers to test
+    """
+    positives = 0
+    true_positives = 0
+    false_negatives = 0
+    for (dataset_essay_corrections, spellchecker_essay_corrections) in zip(
+            dataset_corrections, spellchecker_corrections):
+        dataset_essay_corrections = set(dataset_essay_corrections)
+        spellchecker_essay_corrections = set(spellchecker_essay_corrections)
+        positives += len(spellchecker_essay_corrections)
+        true_positives += len(
+                dataset_essay_corrections.intersection(
+                    spellchecker_essay_corrections))
+        false_negatives += len(
+                dataset_essay_corrections.difference(
+                    spellchecker_essay_corrections))
+    return [true_positives/positives,
+            true_positives/(true_positives+false_negatives)]
+
+
+def display_corrections(spellchecker_name, spellchecker_corrections):
+    print('%s Corrections' % spellchecker_name)
+    t = PrettyTable(['Essay #', 'Index', 'Word', 'Correction'])
+    for (essay_ind, essay_corrections) in enumerate(spellchecker_corrections):
+        for correction in essay_corrections:
+            t.add_row([essay_ind, correction.index, correction.word,
+                correction.best_correction])
+    print(t)
+
+
+def display_spellchecker_stats(dataset, dataset_corrections, spellcheckers):
     """
     Display statistics for the performance of different spellcheckers.
 
     Params:
-        spellcheckers: [list of SpellChecker objects] the SpellCheckers to test.
-        dataset: [list of strings] the list of the essays to correct.
-        dataset_corrections: [list of SpellingCorrection objects] the correct
-            spelling corrections.
+        dataset: [list of strings] The list of the essays to correct.
+        dataset_corrections: [list of SpellingCorrection objects] The correct
+            spelling corrections for each of the essays in dataset.
+        spellcheckers: [list of SpellChecker objects] The SpellCheckers to test.
     """
-    correct_corrections = corrections_to_dict(dataset_corrections)
-    header_row = []
-    first_row = []
-    for essay_corrections in dataset_corrections:
-        for (i, correction) in essay_corrections:
-            header_row.append((c.word, i, c.index))
-            first_row.append(c.corrections[0])
-    t = PrettyTable(header_row)
-    t.add_row(first_row)
-
+    display_corrections('Golden Standard', dataset_corrections)
+    stats_t = PrettyTable(['SpellChecker', 'Precision', 'Recall'])
     for spellchecker in spellcheckers:
-        computed_corrections = spellchecker.spellcheck()
-        computed_corrections_dict = corrections_to_dict(computed_corrections)
-        new_row = []
-        for key in header_row:
-            if key in computed_corrections_dict:
-                new_row.append(computed_corrections_dict[key])
-            else:
-                new_row.append('-')
-        t.add_row(new_row)
-    print(t)
+        spellchecker_corrections = spellchecker.spellcheck(dataset)
+        display_corrections(str(spellchecker), spellchecker_corrections)
+        next_row = [str(spellchecker)] + compute_stats(dataset_corrections,
+                spellchecker_corrections)
+        stats_t.add_row(next_row)
+    print(stats_t)
+
+
+if __name__ == '__main__':
+    dataset, dataset_corrections = (
+            Parser().parse_digitization('transcriptions/holiday.txt'))
+    display_spellchecker_stats(dataset, dataset_corrections,
+            [CorpusSpellChecker('gutenberg')])
