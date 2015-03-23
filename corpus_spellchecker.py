@@ -1,7 +1,8 @@
 from spellchecker import SpellChecker, SpellingCorrection
 import nltk
 import nltk.corpus
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tag import pos_tag
 import string
 
 class CorpusSpellChecker(SpellChecker):
@@ -12,6 +13,9 @@ class CorpusSpellChecker(SpellChecker):
 
         Params:
             corpus_name: [string] Name of NLTK corpus to use.  Ex: 'gutenberg'
+            use_pos_tagger: [bool] Whether or not to use a part of speech tagger
+                to filter out corrected words.  I.e. to not correct proper
+                nouns.
         """
         self.corpus_name = corpus_name
         try:
@@ -20,8 +24,10 @@ class CorpusSpellChecker(SpellChecker):
         except AttributeError:
             raise Exception('You must provide a valid corpus name')
 
-    def should_correct(self, word):
+    def should_correct(self, word, tag=None):
         """Return if a word should be corrected or not"""
+        if tag and tag == 'NNP':
+            return False
         return (self.valid_format_for_correction(word) 
                 and not self.is_correct(word))
 
@@ -54,10 +60,9 @@ class CorpusSpellChecker(SpellChecker):
             candidates = [
                 w for w in self.edit2_words(word) if self.is_correct(w)]
         if not candidates:
-            correction = word
+            return None
         else:
-            correction = max(candidates, key=self.corpus.get)
-        return correction
+            return max(candidates, key=self.corpus.get)
 
     def is_capitalized(self, word):
         return word[0].isupper()
@@ -66,18 +71,32 @@ class CorpusSpellChecker(SpellChecker):
         """Returns word capitalized"""
         return word[0].upper() + word[1:]
 
-    def correct_with_capitalization(self, index, word):
+    def correct_with_capitalization(self, word):
         correction = self.correct(word.lower())
-        if self.is_capitalized(word):
+        if correction and self.is_capitalized(word):
            correction = self.capitalize(correction)
-        return SpellingCorrection(index, word, [correction])
+        return correction
+
+    def is_punctuation_mark(self, word):
+        # Assumes any word that only has non-alpha chars is a punctuation mark
+        return all(not char.isalpha() for char in word)
 
     def spellcheck(self, dataset):
         corrections = []
         for text in dataset:
-            corrections.append([self.correct_with_capitalization(ind, word) 
-                for (ind, word) in enumerate(text.split()) if
-                self.should_correct(word)])
+            sentences = sent_tokenize(text)
+            tagged_words = [(word, tag) for sent in sentences for
+                    (word, tag) in pos_tag(word_tokenize(sent)) if not
+                    self.is_punctuation_mark(word)]
+            text_corrections = []
+            for ind, tagged_word in enumerate(tagged_words):
+                word, tag = tagged_word
+                if self.should_correct(word, tag):
+                    word_corrected = self.correct_with_capitalization(word)
+                    if word_corrected:
+                        text_corrections.append(SpellingCorrection(ind, word,
+                            [word_corrected]))
+            corrections.append(text_corrections)
         return corrections
 
     def __str__(self):
