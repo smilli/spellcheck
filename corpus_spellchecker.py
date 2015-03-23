@@ -7,20 +7,26 @@ import string
 
 class CorpusSpellChecker(SpellChecker):
 
-    def __init__(self, corpus_name=None):
+    def __init__(self, corpus_names=None):
         """
         Construct CorpusSpellChecker.
 
         Params:
-            corpus_name: [string] Name of NLTK corpus to use.  Ex: 'gutenberg'
+            corpus_names: [list of string] Names of NLTK corpora to use.
+                Ex: ['gutenberg', 'brown'] Default is to use only Gutenberg.
             use_pos_tagger: [bool] Whether or not to use a part of speech tagger
                 to filter out corrected words.  I.e. to not correct proper
                 nouns.
         """
-        self.corpus_name = corpus_name
+        if not corpus_names:
+            corpus_names = ['gutenberg']
+        self.corpus_names = corpus_names
         try:
-            corpus = getattr(nltk.corpus, corpus_name)
-            self.corpus = nltk.FreqDist([word.lower() for word in corpus.words()])
+            corpora = []
+            for corpus_name in corpus_names:
+                corpora.append(getattr(nltk.corpus, corpus_name))
+            self.corpus = nltk.FreqDist([
+                word.lower() for corpus in corpora for word in corpus.words()])
         except AttributeError:
             raise Exception('You must provide a valid corpus name')
 
@@ -28,7 +34,7 @@ class CorpusSpellChecker(SpellChecker):
         """Return if a word should be corrected or not"""
         if tag and tag == 'NNP':
             return False
-        return (self.valid_format_for_correction(word) 
+        return (self.valid_format_for_correction(word)
                 and not self.is_correct(word))
 
     def is_correct(self, word):
@@ -100,4 +106,4 @@ class CorpusSpellChecker(SpellChecker):
         return corrections
 
     def __str__(self):
-        return '%s %s' % (self.__class__.__name__, self.corpus_name)
+        return self.__class__.__name__

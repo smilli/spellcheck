@@ -1,7 +1,11 @@
 from prettytable import PrettyTable
-
 from corpus_spellchecker import CorpusSpellChecker
 from digitization_parser import Parser
+import argparse
+parser = argparse.ArgumentParser(description='Compare Spellcheckers on a '
+    'dataset')
+parser.add_argument('-d', '--dataset', help='Path to dataset file.',
+        required=True)
 
 
 def compute_stats(dataset_corrections, spellchecker_corrections):
@@ -62,7 +66,7 @@ def display_spellchecker_stats(dataset, dataset_corrections, spellcheckers):
 
 
 if __name__ == '__main__':
-    dataset, dataset_corrections = (
-            Parser().parse_digitization('transcriptions/holiday.txt'))
+    args = parser.parse_args()
+    dataset, dataset_corrections = Parser().parse_digitization(args.dataset)
     display_spellchecker_stats(dataset, dataset_corrections,
-            [CorpusSpellChecker('gutenberg')])
+        [CorpusSpellChecker(['gutenberg', 'brown'])])
