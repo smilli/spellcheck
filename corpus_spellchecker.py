@@ -20,9 +20,17 @@ class CorpusSpellChecker(SpellChecker):
         except AttributeError:
             raise Exception('You must provide a valid corpus name')
 
-    def is_valid(self, word):
-        """Returns if a word is spelled correctly."""
-        return word in self.corpus
+    def should_correct(self, word):
+        """Return if a word should be corrected or not"""
+        return (self.valid_format_for_correction(word) 
+                and not self.is_correct(word))
+
+    def is_correct(self, word):
+        return word.lower() in self.corpus
+
+    def valid_format_for_correction(self, word):
+        """Return if a word should be considered for correction."""
+        return word.isalpha() and not any([char.isupper() for char in word[1:]])
 
     def edit1_words(self, word):
         """Find all strings edit distance of 1 away from word."""
@@ -39,24 +47,37 @@ class CorpusSpellChecker(SpellChecker):
         """Find all strings edit distance of 2 away from word."""
         return set(e2 for e1 in self.edit1_words(word) for e2 in self.edit1_words(e1))
 
-    def correct(self, index, word):
-        """Returns SpellingCorrection for word."""
-        candidates = [w for w in self.edit1_words(word) if self.is_valid(w)]
+    def correct(self, word):
+        """Returns a correction for word."""
+        candidates = [w for w in self.edit1_words(word) if self.is_correct(w)]
         if not candidates:
-            candidates = [w for w in self.edit2_words(word) if self.is_valid(w)]
+            candidates = [
+                w for w in self.edit2_words(word) if self.is_correct(w)]
         if not candidates:
             correction = word
         else:
             correction = max(candidates, key=self.corpus.get)
+        return correction
+
+    def is_capitalized(self, word):
+        return word[0].isupper()
+
+    def capitalize(self, word):
+        """Returns word capitalized"""
+        return word[0].upper() + word[1:]
+
+    def correct_with_capitalization(self, index, word):
+        correction = self.correct(word.lower())
+        if self.is_capitalized(word):
+           correction = self.capitalize(correction)
         return SpellingCorrection(index, word, [correction])
 
     def spellcheck(self, dataset):
         corrections = []
         for text in dataset:
-            words = [
-                (i, w) for (i, w) in enumerate(text.split()) if w.isalpha()]
-            corrections.append([self.correct(ind, word) for (ind, word) in
-                words if not self.is_valid(word)])
+            corrections.append([self.correct_with_capitalization(ind, word) 
+                for (ind, word) in enumerate(text.split()) if
+                self.should_correct(word)])
         return corrections
 
     def __str__(self):
