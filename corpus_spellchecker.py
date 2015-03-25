@@ -7,17 +7,18 @@ import string
 
 class CorpusSpellChecker(SpellChecker):
 
-    def __init__(self, corpus_names=None):
+    def __init__(self, corpus_names=None, use_dict=True):
         """
         Construct CorpusSpellChecker.
 
         Params:
             corpus_names: [list of string] Names of NLTK corpora to use.
                 Ex: ['gutenberg', 'brown'] Default is to use only Gutenberg.
-            use_pos_tagger: [bool] Whether or not to use a part of speech tagger
-                to filter out corrected words.  I.e. to not correct proper
-                nouns.
+            use_dict: [bool] Whether to filter out words to correct based on
+                their appearance in a list of dictionary words
         """
+        if use_dict:
+            self.eng_dict = set(w.lower() for w in nltk.corpus.words.words())
         if not corpus_names:
             corpus_names = ['gutenberg']
         self.corpus_names = corpus_names
@@ -35,9 +36,13 @@ class CorpusSpellChecker(SpellChecker):
         if tag and tag == 'NNP':
             return False
         return (self.valid_format_for_correction(word)
-                and not self.is_correct(word))
+                and not self.in_dict(word)
+                and not self.in_corpus(word))
 
-    def is_correct(self, word):
+    def in_dict(self, word):
+        return word.lower() in self.eng_dict
+
+    def in_corpus(self, word):
         return word.lower() in self.corpus
 
     def valid_format_for_correction(self, word):
@@ -51,8 +56,8 @@ class CorpusSpellChecker(SpellChecker):
         transposes = [a + b[1] + b[0] + b[2:] for a, b in splits if len(b)>1]
         replaces   = [a + c + b[1:] for a, b in splits for c in
                 string.ascii_lowercase if b]
-        inserts    = [a + c + b     for a, b in splits for c in
-                string.ascii_lowercase]
+        inserts    = [a + c + b for a, b in splits for c in
+                string.ascii_lowercase + '\'']
         return set(deletes + transposes + replaces + inserts)
 
     def edit2_words(self, word):
@@ -61,10 +66,10 @@ class CorpusSpellChecker(SpellChecker):
 
     def correct(self, word):
         """Returns a correction for word."""
-        candidates = [w for w in self.edit1_words(word) if self.is_correct(w)]
+        candidates = [w for w in self.edit1_words(word) if self.in_corpus(w)]
         if not candidates:
             candidates = [
-                w for w in self.edit2_words(word) if self.is_correct(w)]
+                w for w in self.edit2_words(word) if self.in_corpus(w)]
         if not candidates:
             return None
         else:
