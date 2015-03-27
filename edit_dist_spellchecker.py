@@ -110,9 +110,24 @@ class EditDistanceSpellChecker(SpellChecker):
             and word[-1] == 's' and word[:-1] in candidates):
             candidates.pop(word[:-1])
         best_correction, edit = max(
-            candidates.items(), key=(
-            lambda c: self.word_pdist.prob(c[0]) * self.edit_pdist.prob(c[1])))
+            candidates.items(), key=(lambda c: self.score_correction(word, c)))
         return best_correction
+
+    def score_correction(self, word, candidate):
+        """
+        Score a candidate correction.
+
+        Params:
+            word: [string] The word being corrected
+            candidate: [(string, string)] A tuple containing the correction and
+                the edit string.
+
+        Returns:
+            [float] The score for the correction.  Larger scores are
+                better.
+        """
+        correction, edit = candidate
+        return self.word_pdist.prob(correction) * self.edit_pdist.prob(edit)
 
     def correct_with_capitalization(self, word, tag):
         correction = self.correct(word.lower(), tag)
