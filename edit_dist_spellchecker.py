@@ -64,6 +64,7 @@ class EditDistanceSpellChecker(SpellChecker):
         return misspelled + '|' + correct
 
     def edits_r(self, head, tail, max_edits, edits, results):
+        ## Based on http://norvig.com/ngrams/ ##
         correction = head+tail
         if self.in_dict(correction):
             edit_string = '+'.join(edits)
@@ -80,16 +81,16 @@ class EditDistanceSpellChecker(SpellChecker):
                 self.get_edit(prev_char, prev_char + ext[-1])], results)
         if not tail:
             return results
-        ## Deletion
+        # Deletion
         results = self.edits_r(head, tail[1:], max_edits - 1,
             edits + [self.get_edit(prev_char + tail[0], prev_char)], results)
         for ext in extensions:
-            if ext[-1] == tail[0]: ## Match
+            if ext[-1] == tail[0]: # Match
                 results = self.edits_r(ext, tail[1:], max_edits, edits, results)
-            else: ## Replacement
+            else: # Replacement
                 results = self.edits_r(ext, tail[1:], max_edits - 1, edits +
                     [self.get_edit(tail[0], ext[-1])], results)
-        ## Transpose
+        # Transpose
         if len(tail)>=2 and tail[0]!=tail[1] and head+tail[1] in self.prefixes:
             results = self.edits_r(head+tail[1], tail[0]+tail[2:], max_edits - 1,
                 edits + [self.get_edit(tail[0:2], tail[1]+tail[0])], results)
