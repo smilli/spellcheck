@@ -1,6 +1,7 @@
 from prettytable import PrettyTable
 from corpus_spellchecker import CorpusSpellChecker
 from digitization_parser import Parser
+from edit_pdist import EditProbDist, parse_edit_pdist
 import argparse
 parser = argparse.ArgumentParser(description='Compare Spellcheckers on a '
     'dataset')
@@ -44,12 +45,11 @@ def display_corrections(spellchecker_name, spellchecker_corrections):
     print(t)
 
 
-def display_spellchecker_stats(dataset, dataset_corrections, spellcheckers):
+def display_spellchecker_stats(dataset_corrections, spellcheckers):
     """
     Display statistics for the performance of different spellcheckers.
 
     Params:
-        dataset: [list of strings] The list of the essays to correct.
         dataset_corrections: [list of SpellingCorrection objects] The correct
             spelling corrections for each of the essays in dataset.
         spellcheckers: [list of SpellChecker objects] The SpellCheckers to test.
@@ -57,7 +57,7 @@ def display_spellchecker_stats(dataset, dataset_corrections, spellcheckers):
     display_corrections('Golden Standard', dataset_corrections)
     stats_t = PrettyTable(['SpellChecker', 'Precision', 'Recall'])
     for spellchecker in spellcheckers:
-        spellchecker_corrections = spellchecker.spellcheck(dataset)
+        spellchecker_corrections = spellchecker.spellcheck()
         display_corrections(str(spellchecker), spellchecker_corrections)
         next_row = [str(spellchecker)] + compute_stats(dataset_corrections,
                 spellchecker_corrections)
@@ -68,5 +68,10 @@ def display_spellchecker_stats(dataset, dataset_corrections, spellcheckers):
 if __name__ == '__main__':
     args = parser.parse_args()
     dataset, dataset_corrections = Parser().parse_digitization(args.dataset)
-    display_spellchecker_stats(dataset, dataset_corrections,
-        [CorpusSpellChecker(['gutenberg', 'brown'])])
+    edit_pdist = EditProbDist(
+        parse_edit_pdist(file_name='edit_counts.txt', encoding='ISO-8859-1'))
+    display_spellchecker_stats(dataset_corrections,
+        [
+            CorpusSpellChecker(
+                dataset, edit_pdist, corpus_names=['gutenberg', 'brown'])
+        ])

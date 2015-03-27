@@ -3,19 +3,16 @@ from operator import xor
 class SpellChecker:
     """Abstract class for SpellChecker"""
 
-    def __init__(self):
+    def __init__(self, dataset):
         """
         Params:
             dataset: [list of strings] List of texts in data.
         """
         pass
 
-    def spellcheck(self, dataset):
+    def spellcheck(self):
         """
         Check spelling of all texts in dataset.
-
-        Params:
-            dataset: [list of strings] list of essays to correct
 
         Returns:
             List of lists of SpellingCorrection objects.
