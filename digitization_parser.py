@@ -1,7 +1,7 @@
 from spellchecker import SpellingCorrection
 import re
 
-class Parser:
+class DigitizationParser:
 
     def __init__(self, end_of_essay='# # # # # # #'):
         self.end_of_essay = end_of_essay

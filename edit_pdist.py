@@ -1,11 +1,12 @@
+from pdist import ProbDist
 from collections import defaultdict
 from functools import reduce
 from operator import mul
 
-class EditProbDist:
+class EditProbDist(ProbDist):
     """Estimated probability distribution for edits."""
 
-    def __init__(self, counts, prob_spelling_error=0.05, default_func=None):
+    def __init__(self, counts, prob_spelling_error=0.01, default_func=None):
         """
         Construct EditProbDist.
 
@@ -17,12 +18,8 @@ class EditProbDist:
             default_func: [function] A function that returns a probability for
                 validly formatted edits that were never seen in training data.
         """
-        edit_counts = counts.items()
-        total_counts = sum(c for e, c in edit_counts)
         self.prob_spelling_error = prob_spelling_error
-        self.probs = defaultdict(default_func or (lambda: 1/total_counts))
-        for e, c in edit_counts:
-            self.probs[e] = c/total_counts
+        super().__init__(counts, default_func)
 
     def valid_edit(self, edit):
         # TODO(smilli)
@@ -40,23 +37,3 @@ class EditProbDist:
 
 class InvalidEditException(Exception):
     pass
-
-def parse_edit_pdist(file_name, sep='\t', encoding=None):
-    """
-    Parse EditProbDist from of file with lines of form edit count.
-
-    Params:
-        file_name: [string] The path to the file to parse.  File should have
-            lines formatted as <edit><sep><count>.  For example: "e|i   917"
-        sep: [string] The separator between fields on a line.
-        encoding: [string] Type of encoding to use.  Ex: 'utf-8'
-    Returns:
-        counts: [dict{string, int}] Dict from edit to number of counts
-            for the edit.
-    """
-    counts = {}
-    with open(file_name, encoding=encoding) as f:
-        for line in f:
-            edit, count = line.split(sep)
-            counts[edit] = int(count)
-    return counts
