@@ -131,8 +131,6 @@ class EditDistanceSpellChecker(SpellChecker):
                 better.
         """
         correction, edit = candidate
-        print(correction, self.word_pdist.prob(correction),
-                self.edit_pdist.prob(edit))
         return self.word_pdist.prob(correction) * self.edit_pdist.prob(edit)
 
     def correct_with_capitalization(self, word, tag):
