@@ -1,6 +1,7 @@
 from prettytable import PrettyTable
 from edit_dist_spellchecker import EditDistanceSpellChecker
 from corpus_spellchecker import CorpusSpellChecker
+from word_similarity_spellchecker import WordSimilaritySpellChecker
 from digitization_parser import DigitizationParser
 from edit_pdist import EditProbDist
 from pdist import parse_counts, ProbDist
@@ -73,11 +74,11 @@ if __name__ == '__main__':
             args.dataset)
     edit_pdist = EditProbDist(
         parse_counts(file_name='edit_counts.txt', encoding='ISO-8859-1'))
+    words_pdist = ProbDist(parse_counts(file_name='word_counts.txt'))
     display_spellchecker_stats(dataset_corrections,
         [
+            WordSimilaritySpellChecker(dataset, edit_pdist, words_pdist),
             CorpusSpellChecker(
                 dataset, edit_pdist, corpus_names=['gutenberg', 'brown']),
-            EditDistanceSpellChecker(
-                dataset, edit_pdist,
-                ProbDist(parse_counts(file_name='word_counts.txt')))
+            EditDistanceSpellChecker(dataset, edit_pdist, words_pdist)
         ])

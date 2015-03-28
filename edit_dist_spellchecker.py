@@ -4,6 +4,7 @@ import enchant
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.tag import pos_tag
 from collections import defaultdict, Counter
+from constants import contractions
 import string
 
 class EditDistanceSpellChecker(SpellChecker):
@@ -24,8 +25,8 @@ class EditDistanceSpellChecker(SpellChecker):
         self.edit_pdist = edit_pdist
         self.eng_us_dict = enchant.Dict('en_US')
         self.eng_gb_dict = enchant.Dict('en_GB')
-        self.prefixes = set(
-            w[:i] for w in nltk.corpus.words.words() for i in range(len(w) + 1))
+        words = set(nltk.corpus.words.words()).union(contractions)
+        self.prefixes = set(w[:i] for w in words for i in range(len(w) + 1))
         self.alphabet = string.ascii_lowercase + '\''
 
     def should_correct(self, word, tag=None):
@@ -42,11 +43,12 @@ class EditDistanceSpellChecker(SpellChecker):
         return False
 
     def common_word(self, word):
-        return self.word_pdist.prob(word) > 0.00001
+        return self.word_pdist.prob(word) > 0.0001
 
     def valid_format_for_correction(self, word):
         """Return if a word should be considered for correction."""
-        return word.isalpha() and not any([char.isupper() for char in word[1:]])
+        return (len(word) > 1 and word.isalpha()
+            and not any([char.isupper() for char in word[1:]]))
 
     def is_punctuation_mark(self, word):
         # Assumes any word that only has non-alpha chars is a punctuation mark
@@ -68,8 +70,11 @@ class EditDistanceSpellChecker(SpellChecker):
         correction = head+tail
         if self.in_dict(correction):
             edit_string = '+'.join(edits)
-            results[correction] = max(
-                results[correction], edit_string, key=self.edit_pdist.prob)
+            if correction not in results:
+                results[correction] = edit_string
+            else:
+                results[correction] = max(
+                    results[correction], edit_string, key=self.edit_pdist.prob)
         if max_edits <= 0:
             return results
         # Only try insertion on extensions that are possible prefixes of words
@@ -98,7 +103,7 @@ class EditDistanceSpellChecker(SpellChecker):
 
     def edits(self, word, max_edits=1):
         "Return a dict of {correct: edit} pairs within d edits of word."
-        return self.edits_r('', word, max_edits, [], defaultdict(lambda: ''))
+        return self.edits_r('', word, max_edits, [], {})
 
     def correct(self, word, tag):
         """Returns a correction for word."""
@@ -110,15 +115,14 @@ class EditDistanceSpellChecker(SpellChecker):
             and word[-1] == 's' and word[:-1] in candidates):
             candidates.pop(word[:-1])
         best_correction, edit = max(
-            candidates.items(), key=(lambda c: self.score_correction(word, c)))
+            candidates.items(), key=(lambda c: self.score_correction(c)))
         return best_correction
 
-    def score_correction(self, word, candidate):
+    def score_correction(self, candidate):
         """
         Score a candidate correction.
 
         Params:
-            word: [string] The word being corrected
             candidate: [(string, string)] A tuple containing the correction and
                 the edit string.
 
@@ -127,6 +131,8 @@ class EditDistanceSpellChecker(SpellChecker):
                 better.
         """
         correction, edit = candidate
+        print(correction, self.word_pdist.prob(correction),
+                self.edit_pdist.prob(edit))
         return self.word_pdist.prob(correction) * self.edit_pdist.prob(edit)
 
     def correct_with_capitalization(self, word, tag):
