@@ -30,7 +30,7 @@ class EditProbDist(ProbDist):
             prob_edit_given_error = reduce(
                 mul, (self.probs[edit] for edit in edit.split('+')))
             if edit == '':
-                return (1 - self.prob_spelling_error) * prob_edit_given_error
+                return (1 - self.prob_spelling_error)
             else:
                 return self.prob_spelling_error * prob_edit_given_error
         raise InvalidEditException()
