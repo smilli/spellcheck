@@ -1,49 +1,48 @@
-from spellchecker import SpellChecker, SpellingCorrection
-import nltk
+from collections import defaultdict, Counter, deque
+import string
 import enchant
+import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.tag import pos_tag
-from collections import defaultdict, Counter
-from constants import contractions
-import string
+from spellcheck.spellchecker import SpellChecker, SpellingCorrection
+from spellcheck.constants import contractions
 
 class EditDistanceSpellChecker(SpellChecker):
 
-    def __init__(self, dataset, edit_pdist, word_pdist):
+    def __init__(self, error_model, lang_model):
         """
         Construct EditDistanceSpellChecker.
 
         Params:
-            dataset: [list of strings] The essays to correct.
-            edit_pdist: [Pdist obj] An estimated probability distribution
+            error_model: [EditPdist] An estimated probability distribution
                 for types of edits, P(w | c).
-            word_pdist: [Pdist obj] An estimated probability distribution for
+            lang_model: [LanguageModel] An estimated probability distribution for
                 words, P(c).
         """
-        self.dataset = dataset
-        self.word_pdist = word_pdist
-        self.edit_pdist = edit_pdist
+        self.lang_model = lang_model
+        self.error_model = error_model
         self.eng_us_dict = enchant.Dict('en_US')
         self.eng_gb_dict = enchant.Dict('en_GB')
         words = set(nltk.corpus.words.words()).union(contractions)
         self.prefixes = set(w[:i] for w in words for i in range(len(w) + 1))
         self.alphabet = string.ascii_lowercase + '\''
 
-    def should_correct(self, word, tag=None):
+    def should_correct(self, word, tag, context):
         """Return if a word should be corrected or not"""
         if tag and tag == 'NNP':
             return False
+        return self.valid_format_for_correction(word)
         return (self.valid_format_for_correction(word)
                 and not self.in_dict(word)
-                and not self.common_word(word))
+                and not self.common_word(word, context))
 
     def in_dict(self, word):
         if word:
             return self.eng_us_dict.check(word) or self.eng_gb_dict.check(word)
         return False
 
-    def common_word(self, word):
-        return self.word_pdist.prob(word) > 0.0001
+    def common_word(self, word, context):
+        return self.lang_model.prob(word, context) > 0.0001
 
     def valid_format_for_correction(self, word):
         """Return if a word should be considered for correction."""
@@ -65,7 +64,7 @@ class EditDistanceSpellChecker(SpellChecker):
         """Get edit string from mispelled and correct character changes."""
         return misspelled + '|' + correct
 
-    def edits_r(self, head, tail, max_edits, edits, results):
+    def edits(self, head, tail, max_edits, edits, results):
         ## Based on http://norvig.com/ngrams/ ##
         correction = head+tail
         if self.in_dict(correction):
@@ -74,7 +73,7 @@ class EditDistanceSpellChecker(SpellChecker):
                 results[correction] = edit_string
             else:
                 results[correction] = max(
-                    results[correction], edit_string, key=self.edit_pdist.prob)
+                    results[correction], edit_string, key=self.error_model.prob)
         if max_edits <= 0:
             return results
         # Only try insertion on extensions that are possible prefixes of words
@@ -82,78 +81,90 @@ class EditDistanceSpellChecker(SpellChecker):
         prev_char = (head[-1] if head else '<')
         # Insertion
         for ext in extensions:
-            results = self.edits_r(ext, tail, max_edits - 1, edits + [
+            results = self.edits(ext, tail, max_edits - 1, edits + [
                 self.get_edit(prev_char, prev_char + ext[-1])], results)
         if not tail:
             return results
         # Deletion
-        results = self.edits_r(head, tail[1:], max_edits - 1,
+        results = self.edits(head, tail[1:], max_edits - 1,
             edits + [self.get_edit(prev_char + tail[0], prev_char)], results)
         for ext in extensions:
             if ext[-1] == tail[0]: # Match
-                results = self.edits_r(ext, tail[1:], max_edits, edits, results)
+                results = self.edits(ext, tail[1:], max_edits, edits, results)
             else: # Replacement
-                results = self.edits_r(ext, tail[1:], max_edits - 1, edits +
+                results = self.edits(ext, tail[1:], max_edits - 1, edits +
                     [self.get_edit(tail[0], ext[-1])], results)
         # Transpose
         if len(tail)>=2 and tail[0]!=tail[1] and head+tail[1] in self.prefixes:
-            results = self.edits_r(head+tail[1], tail[0]+tail[2:], max_edits - 1,
+            results = self.edits(head+tail[1], tail[0]+tail[2:], max_edits - 1,
                 edits + [self.get_edit(tail[0:2], tail[1]+tail[0])], results)
         return results
 
-    def edits(self, word, max_edits=1):
-        "Return a dict of {correct: edit} pairs within d edits of word."
-        return self.edits_r('', word, max_edits, [], {})
+    def get_candidates(self, word, max_edits=1):
+        "Return a dict of {correcion: edit} pairs within d edits of word."
+        return self.edits('', word, max_edits, [], {})
 
-    def correct(self, word, tag):
+    def correct(self, word, tag, context):
         """Returns a correction for word."""
-        candidates = self.edits(word)
+        candidates = self.get_candidates(word)
         if word not in candidates:
             candidates[word] = ''
         # Prevent correcting plural nouns into singular nouns
         if ((tag == 'NNS' or tag == 'NNPS')
             and word[-1] == 's' and word[:-1] in candidates):
             candidates.pop(word[:-1])
+        #print(word)
+        #for c, e in candidates.items():
+        #    prob_c = self.lang_model.prob(c, context)
+        #    prob_e = self.error_model.prob(e)
+        #    print(c, prob_c, e, prob_e, prob_c * prob_e)
         best_correction, edit = max(
-            candidates.items(), key=(lambda c: self.score_correction(c)))
+            candidates.items(), key=(lambda c: self.score_correction(c, context)))
         return best_correction
 
-    def score_correction(self, candidate):
+    def score_correction(self, candidate, context):
         """
         Score a candidate correction.
 
         Params:
             candidate: [(string, string)] A tuple containing the correction and
                 the edit string.
+            context: [deque] The n - 1 words before candidate where n is the
+                order of the lang model.
 
         Returns:
             [float] The score for the correction.  Larger scores are
                 better.
         """
         correction, edit = candidate
-        return self.word_pdist.prob(correction) * self.edit_pdist.prob(edit)
+        return self.lang_model.prob(correction, context) * self.error_model.prob(edit)
 
-    def correct_with_capitalization(self, word, tag):
-        correction = self.correct(word.lower(), tag)
+    def correct_with_capitalization(self, word, tag, context):
+        correction = self.correct(word.lower(), tag, context)
         if correction and self.is_capitalized(word):
            correction = self.capitalize(correction)
         return correction
 
-    def spellcheck(self):
+    def spellcheck(self, dataset):
         corrections = []
-        for text in self.dataset:
+        for text in dataset:
             sentences = sent_tokenize(text)
             tagged_words = [(word, tag) for sent in sentences for
                     (word, tag) in pos_tag(word_tokenize(sent)) if not
                     self.is_punctuation_mark(word)]
             text_corrections = []
+            context = deque([''] * (self.lang_model.order() - 1))
             for ind, tagged_word in enumerate(tagged_words):
                 word, tag = tagged_word
-                if self.should_correct(word, tag):
-                    word_corrected = self.correct_with_capitalization(word, tag)
+                if self.should_correct(word, tag, context):
+                    word_corrected = self.correct_with_capitalization(word, tag,
+                            context)
                     if word_corrected != word:
                         text_corrections.append(SpellingCorrection(ind, word,
                             [word_corrected]))
+                if context:
+                    context.popleft()
+                    context.append(word)
             corrections.append(text_corrections)
         return corrections
 

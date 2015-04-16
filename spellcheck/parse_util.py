@@ -50,3 +50,23 @@ class DigitizationParser:
                 essays.append(essay_text)
                 essay_corrections.append(self._parse_correction(e))
         return essays, essay_corrections
+
+def parse_counts(file_name, sep='\t', encoding=None):
+    """
+    Parse frequency counts from file.
+
+    Params:
+        file_name: [string] The path to the file to parse.  File should have
+            lines formatted as <item><sep><count>.  For example: "e|i   917"
+        sep: [string] The separator between fields on a line.
+        encoding: [string] Type of encoding to use.  Ex: 'utf-8'
+    Returns:
+        counts: [dict{string, int}] Dict from edit to number of counts
+            for the edit.
+    """
+    counts = {}
+    with open(file_name, encoding=encoding) as f:
+        for line in f:
+            edit, count = line.split(sep)
+            counts[edit] = int(count)
+    return counts
