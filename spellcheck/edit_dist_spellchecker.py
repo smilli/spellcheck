@@ -31,7 +31,6 @@ class EditDistanceSpellChecker(SpellChecker):
         """Return if a word should be corrected or not"""
         if tag and tag == 'NNP':
             return False
-        return self.valid_format_for_correction(word)
         return (self.valid_format_for_correction(word)
                 and not self.in_dict(word)
                 and not self.common_word(word, context))
