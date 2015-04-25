@@ -1,4 +1,4 @@
-from spellchecker import SpellingCorrection
+from spellcheck.spellchecker import SpellingCorrection
 import re
 
 class DigitizationParser:
