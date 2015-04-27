@@ -83,24 +83,29 @@ class InteractiveCorrector:
 
     def extract_rules(self, save_file_path):
         rules = {}
+        save_file = None
         if save_file_path:
             save_file = open(save_file_path, 'a')
         for word in self.d_matrix.get_words():
             if not self.in_dict(word):
                 close_words = self.d_matrix.get_close_words(word, 1)
                 # correct it to a word if it has > 50% of occurences
-                total_counts = sum(c for w, c in close_words) 
+                total_counts = sum(c for w, c in close_words)
                 for close_word, count in close_words:
                     if (close_word != word and self.in_dict(close_word)
                             and count/total_counts >= 0.5):
                         rules[word] = close_word
                         break
-                    print(word, close_words, file=save_file)
-        print('\nRules', file=save_file)
+                    if save_file:
+                        print(word, close_words, file=save_file)
+        if save_file:
+            print('\nRules', file=save_file)
         rules_table = PrettyTable(['Word', 'Correction'])
         for w, c in rules.items():
             rules_table.add_row([w, c])
-        print(rules_table, file=save_file)
+        if save_file:
+            print(rules_table, file=save_file)
+            save_file.close()
         return rules
 
 
