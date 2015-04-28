@@ -23,10 +23,6 @@ class ClusterSpellChecker(SpellChecker):
                 self.valid_correction(w, c))
         return self.rules
 
-    def is_punctuation_mark(self, word):
-        # Assumes any word that only has non-alpha chars is a punctuation mark
-        return all(not char.isalpha() for char in word)
-
     def valid_correction(self, word, correction):
         return (self.correct_capitalization or not ((word[0].upper() + word[1:] ==
             correction) or (word == correction[0].upper() + correction[1:])))
@@ -36,8 +32,7 @@ class ClusterSpellChecker(SpellChecker):
         for text in dataset:
             essay_corrections = []
             sentences = sent_tokenize(text)
-            words  = [w for sent in sentences for w in word_tokenize(sent)
-                    if not self.is_punctuation_mark(w)]
+            words  = [w for sent in sentences for w in word_tokenize(sent)]
             for i, word in enumerate(words):
                 if word in self.rules:
                     essay_corrections.append(SpellingCorrection(i, word,
