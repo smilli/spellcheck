@@ -2,10 +2,12 @@ from collections import defaultdict, Counter, deque
 import string
 import enchant
 import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tokenize import sent_tokenize
 from nltk.tag import pos_tag
 from spellcheck.spellchecker import SpellChecker, SpellingCorrection
+from spellcheck.parse_util import word_tokenize
 from spellcheck.constants import contractions
+
 
 class EditDistanceSpellChecker(SpellChecker):
 
@@ -47,10 +49,6 @@ class EditDistanceSpellChecker(SpellChecker):
         """Return if a word should be considered for correction."""
         return (len(word) > 1 and word.isalpha()
             and not any([char.isupper() for char in word[1:]]))
-
-    def is_punctuation_mark(self, word):
-        # Assumes any word that only has non-alpha chars is a punctuation mark
-        return all(not char.isalpha() for char in word)
 
     def is_capitalized(self, word):
         return word[0].isupper()
@@ -148,9 +146,9 @@ class EditDistanceSpellChecker(SpellChecker):
         corrections = []
         for text in dataset:
             sentences = sent_tokenize(text)
+            # Check quality of POS tagging
             tagged_words = [(word, tag) for sent in sentences for
-                (word, tag) in pos_tag(word_tokenize(sent)) if not
-                self.is_punctuation_mark(word)]
+                (word, tag) in pos_tag(word_tokenize(sent))]
             text_corrections = []
             context = deque([''] * (self.lang_model.order() - 1))
             for ind, tagged_word in enumerate(tagged_words):

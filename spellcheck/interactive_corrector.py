@@ -2,8 +2,8 @@ import argparse
 import enchant
 import numpy as np
 from collections import Counter
-from nltk import sent_tokenize, word_tokenize
-from spellcheck.parse_util import DigitizationParser
+from nltk import sent_tokenize
+from spellcheck.parse_util import DigitizationParser, word_tokenize
 from pyxdameraulevenshtein import damerau_levenshtein_distance
 from prettytable import PrettyTable
 parser = argparse.ArgumentParser(description='Cluster ngrams in a dataset.')

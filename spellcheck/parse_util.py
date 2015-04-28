@@ -70,3 +70,15 @@ def parse_counts(file_name, sep='\t', encoding=None):
             edit, count = line.split(sep)
             counts[edit] = int(count)
     return counts
+
+def word_tokenize(sent):
+    """
+    Split sentence into words.
+    """
+    words = []
+    for word in sent.split():
+        if (len(word) > 1 and word[-1] in '.?!,'):
+            words.append(word[:-1])
+        else:
+            words.append(word)
+    return words

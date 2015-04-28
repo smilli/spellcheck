@@ -48,12 +48,13 @@ def compute_stats(dataset_corrections, spellchecker_corrections):
 
 
 def display_corrections(spellchecker_name, spellchecker_corrections,
-        save_file=None):
-    t = PrettyTable(['Essay #', 'Index', 'Word', 'Correction'])
+        dataset_corrections, save_file=None):
+    t = PrettyTable(['Essay #', 'Index', 'Word', 'Correction', 'Correct?'])
     for (essay_ind, essay_corrections) in enumerate(spellchecker_corrections):
         for correction in essay_corrections:
+            is_correct = (correction in dataset_corrections[essay_ind])
             t.add_row([essay_ind, correction.index, correction.word,
-                correction.best_correction])
+                correction.best_correction, is_correct])
     print('%s Corrections' % spellchecker_name)
     print(t)
     if save_file:
@@ -69,22 +70,23 @@ def display_spellchecker_stats(dataset, dataset_corrections, spellcheckers,
 
     Params:
         dataset: [list of strings] The list of essays.
-        dataset_corrections: [list of SpellingCorrection objects] The correct
-            spelling corrections for each of the essays in dataset.
+        dataset_corrections: [list of list of SpellingCorrection objects] The
+            correct spelling corrections for each of the essays in dataset.
         spellcheckers: [list of SpellChecker objects] The SpellCheckers to test.
         spellchecker_names: [list of strings] Names to display for
             Spellcheckers.
         save_file: [string] Path to file to save stats to.
     """
     assert(len(spellcheckers) == len(spellchecker_names))
-    display_corrections('Golden Standard', dataset_corrections, save_file)
+    display_corrections('Golden Standard', dataset_corrections,
+            dataset_corrections, save_file)
     stats_t = PrettyTable(['SpellChecker', 'Precision', 'Recall'])
     for spellchecker, spellchecker_name in zip(spellcheckers, spellchecker_names):
         spellchecker_corrections = spellchecker.spellcheck(dataset)
         display_corrections(spellchecker_name, spellchecker_corrections,
-                save_file)
+            dataset_corrections, save_file)
         next_row = [spellchecker_name] + compute_stats(dataset_corrections,
-                spellchecker_corrections)
+            spellchecker_corrections)
         stats_t.add_row(next_row)
     print(stats_t)
     if save_file:

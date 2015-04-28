@@ -1,4 +1,5 @@
-from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tokenize import sent_tokenize
+from spellcheck.parse_util import word_tokenize
 from spellcheck.spellchecker import SpellChecker, SpellingCorrection
 from spellcheck.interactive_corrector import DistMatrix, InteractiveCorrector
 from pyxdameraulevenshtein import damerau_levenshtein_distance
