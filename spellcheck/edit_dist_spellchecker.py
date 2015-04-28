@@ -149,8 +149,8 @@ class EditDistanceSpellChecker(SpellChecker):
         for text in dataset:
             sentences = sent_tokenize(text)
             tagged_words = [(word, tag) for sent in sentences for
-                    (word, tag) in pos_tag(word_tokenize(sent)) if not
-                    self.is_punctuation_mark(word)]
+                (word, tag) in pos_tag(word_tokenize(sent)) if not
+                self.is_punctuation_mark(word)]
             text_corrections = []
             context = deque([''] * (self.lang_model.order() - 1))
             for ind, tagged_word in enumerate(tagged_words):

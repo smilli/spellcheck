@@ -81,7 +81,7 @@ class InteractiveCorrector:
             return self.eng_us_dict.check(word) or self.eng_gb_dict.check(word)
         return False
 
-    def extract_rules(self, save_file_path):
+    def extract_rules(self, save_file_path=None):
         rules = {}
         save_file = None
         if save_file_path:

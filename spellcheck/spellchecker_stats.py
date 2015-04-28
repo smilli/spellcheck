@@ -4,6 +4,8 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from prettytable import PrettyTable
 import enchant
 from spellcheck.edit_dist_spellchecker import EditDistanceSpellChecker
+from spellcheck.cluster_spellchecker import ClusterSpellChecker
+from spellcheck.combined_spellchecker import CombinedSpellChecker
 from spellcheck.parse_util import DigitizationParser, parse_counts
 from spellcheck.edit_error_model import EditErrorModel
 from spellcheck.dummy_lang_model import DummyLanguageModel
@@ -14,6 +16,7 @@ parser = argparse.ArgumentParser(description='Compare Spellcheckers on a '
     'dataset')
 parser.add_argument('-d', '--dataset', help='Path to dataset file.',
         required=True)
+parser.add_argument('-f', '--save-file', help='Path to file to save stats to.')
 
 
 def compute_stats(dataset_corrections, spellchecker_corrections):
@@ -134,26 +137,40 @@ if __name__ == '__main__':
         corpus_bigram_model, cache_unigram_model, cache_weight)
     corpus_cached_interpolation_model = CachedModel(
         corpus_interpolation_model, cache_unigram_model, cache_weight)
+    cluster_spellchecker = ClusterSpellChecker()
+    cluster_spellchecker.save_rules_from_dataset(dataset)
+    edit1_wc_spellchecker = EditDistanceSpellChecker(
+        error_model, word_counts_model)
+    edit_1_brown_sc = EditDistanceSpellChecker(error_model, corpus_unigram_model)
+    edit_2_brown_sc = EditDistanceSpellChecker(error_model, corpus_interpolation_model)
     display_spellchecker_stats(dataset, dataset_corrections,
         [
             EditDistanceSpellChecker(error_model, dummy_lang_model),
-            EditDistanceSpellChecker(error_model, word_counts_model),
-            EditDistanceSpellChecker(error_model, word_counts_cached_model),
-            EditDistanceSpellChecker(error_model, corpus_unigram_model),
-            EditDistanceSpellChecker(error_model, corpus_bigram_model),
-            EditDistanceSpellChecker(error_model, corpus_interpolation_model),
-            EditDistanceSpellChecker(error_model, corpus_cached_unigram_model),
-            EditDistanceSpellChecker(error_model, corpus_cached_bigram_model),
-            EditDistanceSpellChecker(error_model, corpus_cached_interpolation_model)
+            cluster_spellchecker,
+            edit1_wc_spellchecker,
+            CombinedSpellChecker([cluster_spellchecker, edit1_wc_spellchecker]),
+            edit_1_brown_sc,
+            CombinedSpellChecker([cluster_spellchecker, edit_1_brown_sc]),
+            edit_2_brown_sc,
+            CombinedSpellChecker([cluster_spellchecker, edit_2_brown_sc])
+        #    EditDistanceSpellChecker(error_model, corpus_bigram_model),
+        #    EditDistanceSpellChecker(error_model, word_counts_cached_model),
+        #    EditDistanceSpellChecker(error_model, corpus_cached_unigram_model),
+        #    EditDistanceSpellChecker(error_model, corpus_cached_bigram_model),
+        #    EditDistanceSpellChecker(error_model, corpus_cached_interpolation_model)
         ],
         [
             'Dummy',
+            'Cluster',
             '1-gram Word Counts',
-            '1-gram Word Counts Cached',
+            'Cluster + 1-gram Word Counts',
             '1-gram Brown Corpus',
-            '2-gram Brown Corpus',
+            'Cluster + 1-gram Brown Corpus',
             'Interpolated 2-gram Brown Corpus',
-            'Cached 1-gram Brown Corpus',
-            'Cached 2-gram Brown Corpus',
-            'Cached Interpolated 2-gram Brown Corpus'
-        ], '../stats.txt')
+            'Cluster + Interpolated 2-gram Brown Corpus',
+        #    '2-gram Brown Corpus',
+        #    '1-gram Word Counts Cached',
+        #    'Cached 1-gram Brown Corpus',
+        #    'Cached 2-gram Brown Corpus',
+        #    'Cached Interpolated 2-gram Brown Corpus'
+        ], args.save_file)
