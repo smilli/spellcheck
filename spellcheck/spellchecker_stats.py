@@ -139,8 +139,10 @@ if __name__ == '__main__':
         corpus_bigram_model, cache_unigram_model, cache_weight)
     corpus_cached_interpolation_model = CachedModel(
         corpus_interpolation_model, cache_unigram_model, cache_weight)
-    cluster_spellchecker = ClusterSpellChecker()
-    cluster_spellchecker.save_rules_from_dataset(dataset)
+    edit_cluster_spellchecker = ClusterSpellChecker()
+    edit_cluster_spellchecker.save_edit1_rules(dataset)
+    suggest_cluster_spellchecker = ClusterSpellChecker()
+    suggest_cluster_spellchecker.save_suggested_rules(dataset)
     edit1_wc_spellchecker = EditDistanceSpellChecker(
         error_model, word_counts_model)
     edit_1_brown_sc = EditDistanceSpellChecker(error_model, corpus_unigram_model)
@@ -148,13 +150,14 @@ if __name__ == '__main__':
     display_spellchecker_stats(dataset, dataset_corrections,
         [
             EditDistanceSpellChecker(error_model, dummy_lang_model),
-            cluster_spellchecker,
+            edit_cluster_spellchecker,
+            suggest_cluster_spellchecker,
             edit1_wc_spellchecker,
-            CombinedSpellChecker([cluster_spellchecker, edit1_wc_spellchecker]),
+            CombinedSpellChecker([edit_cluster_spellchecker, edit1_wc_spellchecker]),
             edit_1_brown_sc,
-            CombinedSpellChecker([cluster_spellchecker, edit_1_brown_sc]),
+            CombinedSpellChecker([edit_cluster_spellchecker, edit_1_brown_sc]),
             edit_2_brown_sc,
-            CombinedSpellChecker([cluster_spellchecker, edit_2_brown_sc])
+            CombinedSpellChecker([edit_cluster_spellchecker, edit_2_brown_sc])
         #    EditDistanceSpellChecker(error_model, corpus_bigram_model),
         #    EditDistanceSpellChecker(error_model, word_counts_cached_model),
         #    EditDistanceSpellChecker(error_model, corpus_cached_unigram_model),
@@ -163,7 +166,8 @@ if __name__ == '__main__':
         ],
         [
             'Dummy',
-            'Cluster',
+            'Edit Cluster',
+            'Suggest Cluster',
             '1-gram Word Counts',
             'Cluster + 1-gram Word Counts',
             '1-gram Brown Corpus',
